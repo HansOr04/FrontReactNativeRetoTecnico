@@ -131,8 +131,8 @@ export const useProductForm = (
   const updateField = useCallback(
     (field: keyof ProductFormData, value: string) => {
       let next = { ...formData, [field]: value };
-      if (field === 'date_release' && value) {
-        next = { ...next, date_revision: addOneYear(value) };
+      if (field === 'date_release') {
+        next = { ...next, date_revision: value ? addOneYear(value) : '' };
       }
       setFormData(next);
 

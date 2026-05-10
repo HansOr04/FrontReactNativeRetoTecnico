@@ -186,7 +186,7 @@ describe('useProductForm — updateField: validación asíncrona de ID', () => {
 
     act(() => { result.current.updateField('id', 'tdc-001'); });
 
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise<void>((resolve) => { setTimeout(resolve, 50); });
     expect(repo.verifyId).not.toHaveBeenCalled();
   });
 });
@@ -223,14 +223,13 @@ describe('useProductForm — resetForm', () => {
 // ─── submitForm ───────────────────────────────────────────────────────────────
 
 describe('useProductForm — submitForm', () => {
+  // Cada campo en su propio act para que el closure de formData se actualice entre llamadas
   const fillValidForm = (result: ReturnType<typeof hook>['result']) => {
-    act(() => {
-      result.current.updateField('id', 'tdc-001');
-      result.current.updateField('name', 'Tarjeta Válida');
-      result.current.updateField('description', 'Descripción que supera los diez caracteres');
-      result.current.updateField('logo', 'https://logo.com/img.png');
-      result.current.updateField('date_release', FUTURE_DATE);
-    });
+    act(() => { result.current.updateField('id', 'tdc-001'); });
+    act(() => { result.current.updateField('name', 'Tarjeta Válida'); });
+    act(() => { result.current.updateField('description', 'Descripción que supera los diez caracteres'); });
+    act(() => { result.current.updateField('logo', 'https://logo.com/img.png'); });
+    act(() => { result.current.updateField('date_release', FUTURE_DATE); });
   };
 
   it('does not call repository when validation fails', async () => {
