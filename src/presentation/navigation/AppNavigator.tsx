@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProductListScreen } from '../screens/ProductListScreen';
@@ -8,45 +9,69 @@ import type { Product } from '../../domain/model/Product';
 import { Colors } from '../../constants/colors';
 
 /**
- * Route parameter definitions for the entire navigation stack.
- * Import this type in screen components to get typed route params.
+ * Mapa de rutas y sus parámetros tipados.
+ * undefined significa que la ruta no recibe parámetros.
  */
 export type RootStackParamList = {
   ProductList: undefined;
   ProductDetail: { product: Product };
-  ProductForm: { product?: Product };
+  ProductForm: { product?: Product }; // undefined = modo creación, Product = modo edición
 };
+
+declare global {
+  namespace ReactNavigation {
+    interface RootParamList extends RootStackParamList {}
+  }
+}
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/** Título estándar del banco mostrado en la pantalla raíz. */
+const BankTitle: React.FC = () => (
+  <Text style={{ fontSize: 18, fontWeight: '500', color: Colors.textPrimary }}>
+    {'🏦 BANCO'}
+  </Text>
+);
+
 /**
- * Root navigation container and stack definition.
- * Rendered once at the app entry point.
+ * Contenedor de navegación raíz de la aplicación.
+ *
+ * Estructura de rutas:
+ * - ProductList   → listado y búsqueda de productos (pantalla raíz, sin back)
+ * - ProductDetail → detalle de un producto; recibe { product } por parámetro
+ * - ProductForm   → formulario de creación/edición; { product } opcional:
+ *                   ausente = modo creación, presente = modo edición
+ *
+ * Renderizado una sola vez en App.tsx dentro de GestureHandlerRootView.
  */
 export const AppNavigator: React.FC = () => (
   <NavigationContainer>
     <Stack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: Colors.headerBackground },
-        headerTintColor: Colors.headerText,
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerTitleStyle: { fontWeight: '500', color: Colors.textPrimary },
+        headerTintColor: Colors.primary,
+        headerShadowVisible: false,
       }}
     >
       <Stack.Screen
         name="ProductList"
         component={ProductListScreen}
-        options={{ title: 'Banco App — Productos' }}
+        options={{
+          headerTitle: () => <BankTitle />,
+          headerBackVisible: false,
+        }}
       />
       <Stack.Screen
         name="ProductDetail"
         component={ProductDetailScreen}
-        options={{ title: 'Detalle del Producto' }}
+        options={({ route }) => ({ title: route.params.product.name })}
       />
       <Stack.Screen
         name="ProductForm"
         component={ProductFormScreen}
         options={({ route }) => ({
-          title: route.params?.product ? 'Editar Producto' : 'Agregar Producto',
+          title: route.params?.product ? 'Editar' : 'Agregar',
         })}
       />
     </Stack.Navigator>
