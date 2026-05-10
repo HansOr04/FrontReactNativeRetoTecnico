@@ -27,8 +27,8 @@ export const AppNavigator: React.FC = () => (
   <NavigationContainer>
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: Colors.primary },
-        headerTintColor: Colors.text,
+        headerStyle: { backgroundColor: Colors.headerBackground },
+        headerTintColor: Colors.headerText,
         headerTitleStyle: { fontWeight: 'bold' },
       }}
     >

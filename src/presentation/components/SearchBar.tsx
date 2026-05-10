@@ -23,7 +23,7 @@ export const SearchBar: React.FC<Props> = ({
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={Colors.textSecondary}
+      placeholderTextColor={Colors.textMuted}
       clearButtonMode="while-editing"
       autoCorrect={false}
       autoCapitalize="none"
@@ -37,13 +37,13 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.backgroundPrimary,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    color: Colors.text,
+    color: Colors.textPrimary,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderDefault,
   },
 });

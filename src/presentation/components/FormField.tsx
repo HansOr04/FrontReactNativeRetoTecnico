@@ -16,7 +16,7 @@ export const FormField: React.FC<Props> = ({ label, error, style, ...inputProps 
     <Text style={styles.label}>{label}</Text>
     <TextInput
       style={[styles.input, error ? styles.inputError : null, style]}
-      placeholderTextColor={Colors.textSecondary}
+      placeholderTextColor={Colors.textMuted}
       {...inputProps}
     />
     {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -30,25 +30,25 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   input: {
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderDefault,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: Colors.text,
-    backgroundColor: Colors.surface,
+    color: Colors.textPrimary,
+    backgroundColor: Colors.backgroundPrimary,
   },
   inputError: {
-    borderColor: Colors.error,
+    borderColor: Colors.borderError,
   },
   errorText: {
     fontSize: 12,
-    color: Colors.error,
+    color: Colors.textError,
     marginTop: 4,
   },
 });

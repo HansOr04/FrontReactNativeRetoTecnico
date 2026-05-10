@@ -26,6 +26,17 @@ describe('useProductForm — initial state', () => {
     expect(result.current.isEditing).toBe(false);
   });
 
+  it('should initialize all validation fields as valid', () => {
+    const { result } = renderHook(() => useProductForm());
+    const { validation } = result.current;
+    expect(validation.id.isValid).toBe(true);
+    expect(validation.name.isValid).toBe(true);
+    expect(validation.description.isValid).toBe(true);
+    expect(validation.logo.isValid).toBe(true);
+    expect(validation.date_release.isValid).toBe(true);
+    expect(validation.date_revision.isValid).toBe(true);
+  });
+
   it('should initialize with product data when editing', () => {
     const { result } = renderHook(() => useProductForm(validProduct));
     expect(result.current.formData.name).toBe(validProduct.name);
@@ -42,22 +53,31 @@ describe('useProductForm — updateField', () => {
     expect(result.current.formData.name).toBe('Nuevo Nombre');
   });
 
-  it('should clear the field error when the field is updated', async () => {
+  it('should auto-compute date_revision when date_release is set', () => {
+    const { result } = renderHook(() => useProductForm());
+    act(() => {
+      result.current.updateField('date_release', '2030-06-15');
+    });
+    expect(result.current.formData.date_revision).toBe('2031-06-15');
+  });
+
+  it('should clear the field validation error when the field is updated', async () => {
     const { result } = renderHook(() => useProductForm());
     await act(async () => {
       await result.current.submit();
     });
-    expect(result.current.errors.name).toBeDefined();
+    expect(result.current.validation.name.isValid).toBe(false);
 
     act(() => {
       result.current.updateField('name', 'Algo válido');
     });
-    expect(result.current.errors.name).toBeUndefined();
+    expect(result.current.validation.name.isValid).toBe(true);
+    expect(result.current.validation.name.errorMessage).toBeNull();
   });
 });
 
 describe('useProductForm — reset', () => {
-  it('should clear all fields and errors', async () => {
+  it('should clear all fields and reset validation to valid', async () => {
     const { result } = renderHook(() => useProductForm());
     act(() => {
       result.current.updateField('name', 'Temp');
@@ -66,20 +86,31 @@ describe('useProductForm — reset', () => {
       result.current.reset();
     });
     expect(result.current.formData.name).toBe('');
-    expect(result.current.errors).toEqual({});
+    expect(result.current.formData.date_revision).toBe('');
+    expect(result.current.validation.name.isValid).toBe(true);
   });
 });
 
 describe('useProductForm — validation', () => {
-  it('should set errors for all required fields on empty submit', async () => {
+  it('should set invalid fields on empty form submission', async () => {
     const { result } = renderHook(() => useProductForm());
     await act(async () => {
       await result.current.submit();
     });
-    expect(Object.keys(result.current.errors).length).toBeGreaterThan(0);
-    expect(result.current.errors.id).toBeDefined();
-    expect(result.current.errors.name).toBeDefined();
-    expect(result.current.errors.description).toBeDefined();
+    const { validation } = result.current;
+    expect(Object.values(validation).some((f) => !f.isValid)).toBe(true);
+    expect(validation.id.isValid).toBe(false);
+    expect(validation.name.isValid).toBe(false);
+    expect(validation.description.isValid).toBe(false);
+  });
+
+  it('should set errorMessage on invalid fields', async () => {
+    const { result } = renderHook(() => useProductForm());
+    await act(async () => {
+      await result.current.submit();
+    });
+    expect(result.current.validation.id.errorMessage).toBeTruthy();
+    expect(result.current.validation.name.errorMessage).toBeTruthy();
   });
 
   it('should reject an ID shorter than 3 characters', async () => {
@@ -90,7 +121,7 @@ describe('useProductForm — validation', () => {
     await act(async () => {
       await result.current.submit();
     });
-    expect(result.current.errors.id).toBeDefined();
+    expect(result.current.validation.id.isValid).toBe(false);
   });
 
   it('should call onSuccess after a valid create submission', async () => {

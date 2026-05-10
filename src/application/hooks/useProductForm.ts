@@ -2,12 +2,25 @@ import { useState, useCallback } from 'react';
 import type {
   Product,
   ProductFormData,
-  ProductFormErrors,
+  FieldValidation,
+  FormValidationState,
 } from '../../domain/model/Product';
 import type { IProductRepository } from '../../domain/repository/IProductRepository';
 import { ProductApiRepository } from '../../infrastructure/api/ProductApiRepository';
 
 const repository: IProductRepository = new ProductApiRepository();
+
+const VALID: FieldValidation = { isValid: true, errorMessage: null };
+const invalid = (message: string): FieldValidation => ({ isValid: false, errorMessage: message });
+
+const INITIAL_VALIDATION: FormValidationState = {
+  id: VALID,
+  name: VALID,
+  description: VALID,
+  logo: VALID,
+  date_release: VALID,
+  date_revision: VALID,
+};
 
 /** Returns a date string one year after the given ISO date string. */
 const addOneYear = (dateStr: string): string => {
@@ -19,28 +32,28 @@ const addOneYear = (dateStr: string): string => {
 const validate = async (
   data: ProductFormData,
   isEditing: boolean,
-): Promise<ProductFormErrors> => {
-  const errors: ProductFormErrors = {};
+): Promise<FormValidationState> => {
+  const state: FormValidationState = { ...INITIAL_VALIDATION };
 
   if (!data.id || data.id.length < 3 || data.id.length > 10) {
-    errors.id = 'El ID debe tener entre 3 y 10 caracteres';
+    state.id = invalid('El ID debe tener entre 3 y 10 caracteres');
   } else if (!isEditing) {
     const exists = await repository.verifyId(data.id);
     if (exists) {
-      errors.id = 'El ID ya existe';
+      state.id = invalid('El ID ya existe');
     }
   }
 
   if (!data.name || data.name.length < 5 || data.name.length > 100) {
-    errors.name = 'El nombre debe tener entre 5 y 100 caracteres';
+    state.name = invalid('El nombre debe tener entre 5 y 100 caracteres');
   }
 
   if (!data.description || data.description.length < 10 || data.description.length > 200) {
-    errors.description = 'La descripción debe tener entre 10 y 200 caracteres';
+    state.description = invalid('La descripción debe tener entre 10 y 200 caracteres');
   }
 
   if (!data.logo) {
-    errors.logo = 'El logo es requerido';
+    state.logo = invalid('El logo es requerido');
   }
 
   if (data.date_release) {
@@ -48,25 +61,25 @@ const validate = async (
     today.setHours(0, 0, 0, 0);
     const releaseDate = new Date(data.date_release);
     if (releaseDate < today) {
-      errors.date_release = 'La fecha de liberación debe ser igual o mayor a hoy';
+      state.date_release = invalid('La fecha de liberación debe ser igual o mayor a hoy');
     }
   } else {
-    errors.date_release = 'La fecha de liberación es requerida';
+    state.date_release = invalid('La fecha de liberación es requerida');
   }
 
-  return errors;
+  return state;
 };
 
 /**
  * Manages product form state, field-level validation, and create/update submission.
  *
  * Business rules encapsulated here:
- * - date_revision is auto-computed as date_release + 1 year on submit.
- * - ID uniqueness is validated via the repository only when creating.
- * - Validation errors are cleared per-field as the user types.
+ * - date_revision se auto-computa como date_release + 1 año al cambiar el campo.
+ * - La unicidad del ID se valida contra el repositorio solo al crear.
+ * - Los errores de validación se limpian por campo al escribir.
  *
- * @param initialData - Pre-populated product when editing an existing entry.
- * @param onSuccess   - Callback invoked after a successful create or update.
+ * @param initialData - Producto existente cuando se edita una entrada.
+ * @param onSuccess   - Callback invocado tras un crear o actualizar exitoso.
  */
 export const useProductForm = (
   initialData?: Product,
@@ -80,45 +93,62 @@ export const useProductForm = (
     description: initialData?.description ?? '',
     logo: initialData?.logo ?? '',
     date_release: initialData?.date_release ?? '',
+    date_revision: initialData?.date_revision ?? '',
   });
 
-  const [errors, setErrors] = useState<ProductFormErrors>({});
+  const [validation, setValidation] = useState<FormValidationState>(INITIAL_VALIDATION);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const updateField = useCallback(
     <K extends keyof ProductFormData>(field: K, value: ProductFormData[K]) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
+      setFormData((prev) => {
+        const next = { ...prev, [field]: value };
+        // Auto-compute date_revision whenever date_release is set
+        if (field === 'date_release' && typeof value === 'string' && value) {
+          next.date_revision = addOneYear(value);
+        }
+        return next;
+      });
+      setValidation((prev) => ({ ...prev, [field]: VALID }));
     },
     [],
   );
 
   const reset = useCallback(() => {
-    setFormData({ id: '', name: '', description: '', logo: '', date_release: '' });
-    setErrors({});
+    setFormData({
+      id: '',
+      name: '',
+      description: '',
+      logo: '',
+      date_release: '',
+      date_revision: '',
+    });
+    setValidation(INITIAL_VALIDATION);
     setSubmitError(null);
   }, []);
 
   const submit = useCallback(async () => {
-    const validationErrors = await validate(formData, isEditing);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    const result = await validate(formData, isEditing);
+    const hasErrors = Object.values(result).some((f) => !f.isValid);
+    if (hasErrors) {
+      setValidation(result);
       return;
     }
-
-    const product: Product = {
-      ...formData,
-      date_revision: addOneYear(formData.date_release),
-    };
 
     setLoading(true);
     setSubmitError(null);
     try {
       if (isEditing && initialData) {
-        await repository.update(initialData.id, product);
+        await repository.update(initialData.id, {
+          name: formData.name,
+          description: formData.description,
+          logo: formData.logo,
+          date_release: formData.date_release,
+          date_revision: formData.date_revision,
+        });
       } else {
-        await repository.create(product);
+        await repository.create(formData);
       }
       onSuccess?.();
     } catch (err) {
@@ -130,7 +160,7 @@ export const useProductForm = (
 
   return {
     formData,
-    errors,
+    validation,
     loading,
     submitError,
     updateField,

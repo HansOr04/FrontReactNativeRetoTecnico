@@ -1,29 +1,46 @@
 /**
- * Core domain entity representing a bank financial product.
- * @interface Product
+ * Representa un producto financiero ofertado por el banco.
+ * Es la entidad central del dominio — inmutable una vez creada.
  */
 export interface Product {
-  /** Unique identifier (3–10 characters) */
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly logo: string;
+  readonly date_release: string; // ISO date string: "YYYY-MM-DD"
+  readonly date_revision: string; // ISO date string: "YYYY-MM-DD"
+}
+
+/**
+ * Datos necesarios para crear o actualizar un producto financiero.
+ * Todos los campos son requeridos — las validaciones están en useProductForm.
+ */
+export interface ProductFormData {
   id: string;
-  /** Display name of the product (5–100 characters) */
   name: string;
-  /** Detailed description (10–200 characters) */
   description: string;
-  /** URL or path to the product logo */
   logo: string;
-  /** Release date in ISO 8601 format (YYYY-MM-DD), must be >= today */
   date_release: string;
-  /** Revision date — always exactly one year after date_release */
   date_revision: string;
 }
 
 /**
- * Form input data for creating or updating a product.
- * Excludes date_revision which is auto-computed from date_release.
+ * Resultado de una validación de campo individual.
  */
-export type ProductFormData = Omit<Product, 'date_revision'>;
+export interface FieldValidation {
+  readonly isValid: boolean;
+  readonly errorMessage: string | null;
+}
 
 /**
- * Validation error messages keyed by ProductFormData field name.
+ * Estado completo de validación del formulario de producto.
+ * Un campo por cada campo del ProductFormData.
  */
-export type ProductFormErrors = Partial<Record<keyof ProductFormData, string>>;
+export interface FormValidationState {
+  id: FieldValidation;
+  name: FieldValidation;
+  description: FieldValidation;
+  logo: FieldValidation;
+  date_release: FieldValidation;
+  date_revision: FieldValidation;
+}

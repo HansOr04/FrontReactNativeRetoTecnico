@@ -87,13 +87,13 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: Colors.backgroundSecondary },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundSecondary,
   },
   list: { paddingVertical: 8 },
   countRow: {
@@ -110,8 +110,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
-  addButtonText: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  errorText: { fontSize: 16, color: Colors.error, textAlign: 'center' },
+  addButtonText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  errorText: { fontSize: 16, color: Colors.textError, textAlign: 'center' },
   retryButton: {
     marginTop: 16,
     backgroundColor: Colors.primary,
@@ -119,10 +119,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
   },
-  retryText: { fontSize: 15, fontWeight: '600', color: Colors.text },
+  retryText: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   emptyText: {
     textAlign: 'center',
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     marginTop: 40,
     fontSize: 16,
   },

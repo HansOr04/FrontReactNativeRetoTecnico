@@ -37,12 +37,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.backgroundPrimary,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 4,
     borderRadius: 8,
-    shadowColor: Colors.shadow,
+    shadowColor: '#00000020',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
     shadowRadius: 2,
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: Colors.borderDefault,
   },
   info: {
     flex: 1,
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
+    color: Colors.textPrimary,
   },
   id: {
     fontSize: 13,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 24,
-    color: Colors.textSecondary,
+    color: Colors.chevronColor,
     marginLeft: 8,
   },
 });

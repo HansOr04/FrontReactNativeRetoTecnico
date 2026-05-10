@@ -85,21 +85,21 @@ const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: Colors.backgroundSecondary },
   content: { padding: 16 },
   logo: {
     width: '100%',
     height: 120,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.backgroundPrimary,
     borderRadius: 8,
     marginBottom: 16,
   },
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.backgroundPrimary,
     borderRadius: 8,
     padding: 16,
     marginBottom: 24,
-    shadowColor: Colors.shadow,
+    shadowColor: '#00000020',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
     shadowRadius: 2,
@@ -110,10 +110,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderDefault,
   },
   rowLabel: { fontSize: 14, color: Colors.textSecondary, flex: 1 },
-  rowValue: { fontSize: 14, color: Colors.text, flex: 2, textAlign: 'right' },
+  rowValue: { fontSize: 14, color: Colors.textPrimary, flex: 2, textAlign: 'right' },
   editButton: {
     backgroundColor: Colors.primary,
     borderRadius: 8,
@@ -121,9 +121,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  editButtonText: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  editButtonText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
   deleteButton: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.backgroundPrimary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

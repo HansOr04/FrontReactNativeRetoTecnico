@@ -1,25 +1,44 @@
-import type { Product } from '../model/Product';
+import type { Product, ProductFormData } from '../model/Product';
 
 /**
- * Contract defining all data-access operations for products.
- * UI and application layers depend on this abstraction, not on
- * any concrete HTTP or storage implementation (DIP).
- *
- * @interface IProductRepository
+ * Contrato de acceso a datos para productos financieros.
+ * El dominio define QUÉ necesita — la infraestructura define CÓMO.
+ * Esto permite cambiar la implementación (API, mock, cache)
+ * sin modificar la lógica de aplicación.
  */
 export interface IProductRepository {
-  /** Fetches the complete list of products from the data source. */
+  /**
+   * Obtiene todos los productos financieros disponibles.
+   * @returns Lista de productos o lanza error si el servidor no responde
+   */
   getAll(): Promise<Product[]>;
 
-  /** Creates a new product and returns the persisted entity. */
-  create(product: Product): Promise<Product>;
+  /**
+   * Crea un nuevo producto financiero.
+   * @param product - Datos completos del producto a crear
+   * @throws Error si el ID ya existe o los datos son inválidos
+   */
+  create(product: ProductFormData): Promise<Product>;
 
-  /** Updates an existing product identified by id. */
-  update(id: string, product: Product): Promise<Product>;
+  /**
+   * Actualiza un producto financiero existente.
+   * @param id - ID del producto a actualizar
+   * @param product - Nuevos datos del producto (sin el ID, que ya viene en la ruta)
+   * @throws Error si el producto no existe
+   */
+  update(id: string, product: Omit<ProductFormData, 'id'>): Promise<Product>;
 
-  /** Deletes the product with the given id. */
+  /**
+   * Elimina un producto financiero.
+   * @param id - ID del producto a eliminar
+   * @throws Error si el producto no existe
+   */
   delete(id: string): Promise<void>;
 
-  /** Returns true if a product with the given id already exists. */
+  /**
+   * Verifica si un ID de producto ya existe en el sistema.
+   * @param id - ID a verificar
+   * @returns true si el ID ya está registrado, false si está disponible
+   */
   verifyId(id: string): Promise<boolean>;
 }
