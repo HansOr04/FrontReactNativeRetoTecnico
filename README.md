@@ -1,6 +1,135 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# BancoApp
 
-# Getting Started
+Aplicación React Native con TypeScript para gestión de productos financieros bancarios.
+Implementa Clean Architecture con separación estricta entre dominio, aplicación e infraestructura.
+
+## Requisitos previos
+
+| Herramienta | Versión mínima |
+|-------------|----------------|
+| Node.js | 18.x |
+| React Native CLI | 0.85+ |
+| Android Studio / Xcode | según plataforma |
+| JDK | 17 (Android) |
+
+Asegúrate de haber completado la [guía de configuración del entorno](https://reactnative.dev/docs/set-up-your-environment) antes de continuar.
+
+## Levantar el proyecto
+
+### 1. Instalar dependencias
+
+```bash
+npm install
+```
+
+Para iOS (solo macOS):
+```bash
+cd ios && pod install && cd ..
+```
+
+### 2. Configurar la URL del backend
+
+El cliente HTTP apunta por defecto a `http://localhost:3002/bp`.
+Para cambiarlo edita una sola línea en `src/infrastructure/api/apiClient.ts`:
+
+```ts
+const BASE_URL = 'http://localhost:3002/bp'; // ← cambia esta URL
+```
+
+Si el backend corre en un dispositivo físico o emulador, usa la IP de tu máquina
+(p.ej. `http://192.168.1.x:3002/bp`) en lugar de `localhost`.
+
+### 3. Iniciar Metro
+
+```bash
+npm start
+```
+
+### 4. Ejecutar la app
+
+**Android:**
+```bash
+npm run android
+```
+
+**iOS:**
+```bash
+npm run ios
+```
+
+## Ejecutar los tests
+
+```bash
+npm test
+```
+
+Para modo watch:
+```bash
+npm test -- --watchAll
+```
+
+## Estructura del proyecto
+
+```
+src/
+├── domain/                        # Entidades y contratos (sin dependencias externas)
+│   ├── model/
+│   │   └── Product.ts             # Interface Product, ProductFormData, ProductFormErrors
+│   └── repository/
+│       └── IProductRepository.ts  # Contrato de acceso a datos
+│
+├── infrastructure/                # Implementaciones concretas de los contratos
+│   └── api/
+│       ├── apiClient.ts               # Cliente HTTP base (fetch)
+│       └── ProductApiRepository.ts    # Implementación HTTP de IProductRepository
+│
+├── application/                   # Lógica de negocio — hooks reutilizables
+│   └── hooks/
+│       ├── useProducts.ts         # Listado, búsqueda y eliminación
+│       └── useProductForm.ts      # Validaciones y envío del formulario
+│
+├── presentation/                  # UI pura — sin lógica de negocio
+│   ├── screens/
+│   │   ├── ProductListScreen.tsx
+│   │   ├── ProductDetailScreen.tsx
+│   │   └── ProductFormScreen.tsx
+│   ├── components/
+│   │   ├── ProductItem.tsx        # Fila del listado
+│   │   ├── SearchBar.tsx          # Campo de búsqueda
+│   │   └── FormField.tsx          # Input con label y error
+│   └── navigation/
+│       └── AppNavigator.tsx       # Stack navigator y RootStackParamList
+│
+├── constants/
+│   └── colors.ts                  # Paleta de colores (amarillo banco)
+│
+└── __tests__/
+    ├── useProducts.test.ts
+    └── useProductForm.test.ts
+```
+
+## Principios aplicados
+
+- **Clean Architecture**: dominio sin dependencias externas, infraestructura intercambiable.
+- **SRP**: cada archivo tiene una única responsabilidad.
+- **DIP**: los hooks y screens dependen de `IProductRepository`, no de `ProductApiRepository`.
+- **Sin lógica en UI**: los componentes solo renderizan; los hooks contienen todo el comportamiento.
+- **TypeScript estricto**: `strict: true` en tsconfig, sin `any` explícito.
+- **Estilos**: `StyleSheet.create()` puro — sin frameworks de terceros.
+
+## Endpoints del backend (localhost:3002)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | /bp/products | Listar todos los productos |
+| POST | /bp/products | Crear producto |
+| PUT | /bp/products/:id | Actualizar producto |
+| DELETE | /bp/products/:id | Eliminar producto |
+| GET | /bp/products/verification?id=X | Verificar si el ID existe |
+
+---
+
+# Getting Started (React Native original)
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 
