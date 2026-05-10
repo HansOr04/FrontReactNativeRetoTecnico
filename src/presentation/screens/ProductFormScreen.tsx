@@ -17,9 +17,9 @@ import { Colors } from '../../constants/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductForm'>;
 
-/** Extrae el mensaje de error de un FieldValidation, o undefined si es válido. */
-const fieldError = (v: FieldValidation): string | undefined =>
-  v.isValid ? undefined : v.errorMessage ?? undefined;
+/** Extrae el mensaje de error de un FieldValidation, o null si es válido. */
+const fieldError = (v: FieldValidation): string | null =>
+  v.isValid ? null : v.errorMessage;
 
 /**
  * Pantalla de formulario para crear o editar un producto financiero.
@@ -52,48 +52,44 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         label="ID"
         value={formData.id}
         onChangeText={(v) => updateField('id', v)}
-        error={fieldError(validationState.id)}
-        editable={!isEditMode}
+        errorMessage={fieldError(validationState.id)}
+        isDisabled={isEditMode}
         placeholder="ej: tdc-001"
-        autoCapitalize="none"
       />
       <FormField
         label="Nombre"
         value={formData.name}
         onChangeText={(v) => updateField('name', v)}
-        error={fieldError(validationState.name)}
+        errorMessage={fieldError(validationState.name)}
         placeholder="ej: Tarjeta de Crédito"
       />
       <FormField
         label="Descripción"
         value={formData.description}
         onChangeText={(v) => updateField('description', v)}
-        error={fieldError(validationState.description)}
+        errorMessage={fieldError(validationState.description)}
         placeholder="ej: Tarjeta de crédito con beneficios exclusivos"
         multiline
-        numberOfLines={3}
       />
       <FormField
         label="Logo (URL)"
         value={formData.logo}
         onChangeText={(v) => updateField('logo', v)}
-        error={fieldError(validationState.logo)}
+        errorMessage={fieldError(validationState.logo)}
         placeholder="https://example.com/logo.png"
-        autoCapitalize="none"
         keyboardType="url"
       />
       <FormField
         label="Fecha de Liberación"
         value={formData.date_release}
         onChangeText={(v) => updateField('date_release', v)}
-        error={fieldError(validationState.date_release)}
+        errorMessage={fieldError(validationState.date_release)}
         placeholder="YYYY-MM-DD"
       />
       <FormField
         label="Fecha de Revisión (auto-calculada)"
         value={formData.date_revision}
-        onChangeText={() => undefined}
-        editable={false}
+        isDisabled
         placeholder="Se calcula automáticamente"
       />
 
