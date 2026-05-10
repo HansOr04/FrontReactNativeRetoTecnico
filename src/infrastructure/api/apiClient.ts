@@ -1,47 +1,64 @@
 /**
- * Base URL for the backend REST API.
- * Change this value to point to a different environment.
- * In production, load it from a .env file via react-native-config.
+ * Cliente HTTP base para comunicación con el backend bancario.
+ * Centraliza la URL base, los headers y el manejo de errores HTTP.
+ *
+ * URL configurable para facilitar el cambio entre entornos:
+ * - Desarrollo local: http://localhost:3002
+ * - Emulador Android: http://10.0.2.2:3002
+ * - Dispositivo físico: http://{IP_LOCAL}:3002
  */
+
 const BASE_URL = 'http://localhost:3002/bp';
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
-
-const request = async <T>(
-  method: HttpMethod,
-  endpoint: string,
-  body?: unknown,
-): Promise<T> => {
-  const options: RequestInit = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
-
-  if (body !== undefined) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(`${BASE_URL}${endpoint}`, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || `Request failed with status ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json() as Promise<T>;
+/**
+ * Encabezados comunes para todas las requests.
+ */
+const DEFAULT_HEADERS: Record<string, string> = {
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
 };
 
 /**
- * Minimal HTTP client built on the Fetch API.
- * All methods throw on non-2xx responses.
+ * Realiza una request HTTP genérica con manejo centralizado de errores.
+ * @throws Error con mensaje descriptivo en caso de fallo de red o HTTP 4xx/5xx
  */
+async function request<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const url = `${BASE_URL}${endpoint}`;
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: { ...DEFAULT_HEADERS, ...options.headers },
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(
+        (errorBody as { message?: string }).message ??
+          `Error ${response.status}: ${response.statusText}`,
+      );
+    }
+
+    // DELETE retorna 200 con mensaje — no siempre hay body JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      return response.json() as Promise<T>;
+    }
+    return {} as T;
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error('Error de conexión con el servidor bancario');
+  }
+}
+
 export const apiClient = {
-  get: <T>(endpoint: string) => request<T>('GET', endpoint),
-  post: <T>(endpoint: string, body: unknown) => request<T>('POST', endpoint, body),
-  put: <T>(endpoint: string, body: unknown) => request<T>('PUT', endpoint, body),
-  delete: (endpoint: string) => request<void>('DELETE', endpoint),
+  get: <T>(endpoint: string) => request<T>(endpoint),
+  post: <T>(endpoint: string, body: unknown) =>
+    request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+  put: <T>(endpoint: string, body: unknown) =>
+    request<T>(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: <T>(endpoint: string) =>
+    request<T>(endpoint, { method: 'DELETE' }),
 };

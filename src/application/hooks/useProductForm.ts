@@ -6,166 +6,235 @@ import type {
   FormValidationState,
 } from '../../domain/model/Product';
 import type { IProductRepository } from '../../domain/repository/IProductRepository';
-import { ProductApiRepository } from '../../infrastructure/api/ProductApiRepository';
+import { productRepository } from '../../infrastructure/api/ProductApiRepository';
 
-const repository: IProductRepository = new ProductApiRepository();
+// ─── Pure validation functions (OCP: each field is an isolated rule) ──────────
 
-const VALID: FieldValidation = { isValid: true, errorMessage: null };
-const invalid = (message: string): FieldValidation => ({ isValid: false, errorMessage: message });
+const valid = (): FieldValidation => ({ isValid: true, errorMessage: null });
+const invalid = (errorMessage: string): FieldValidation => ({ isValid: false, errorMessage });
+
+function validateId(id: string): FieldValidation {
+  if (!id) return invalid('El ID es requerido');
+  if (id.length < 3) return invalid('El ID debe tener mínimo 3 caracteres');
+  if (id.length > 10) return invalid('El ID debe tener máximo 10 caracteres');
+  return valid();
+}
+
+function validateName(name: string): FieldValidation {
+  if (!name) return invalid('El nombre es requerido');
+  if (name.length < 5) return invalid('El nombre debe tener mínimo 5 caracteres');
+  if (name.length > 100) return invalid('El nombre debe tener máximo 100 caracteres');
+  return valid();
+}
+
+function validateDescription(description: string): FieldValidation {
+  if (!description) return invalid('La descripción es requerida');
+  if (description.length < 10) return invalid('La descripción debe tener mínimo 10 caracteres');
+  if (description.length > 200) return invalid('La descripción debe tener máximo 200 caracteres');
+  return valid();
+}
+
+function validateLogo(logo: string): FieldValidation {
+  if (!logo) return invalid('El logo es requerido');
+  return valid();
+}
+
+function validateDateRelease(dateRelease: string): FieldValidation {
+  if (!dateRelease) return invalid('La fecha de liberación es requerida');
+  const today = new Date().toISOString().split('T')[0] as string;
+  if (dateRelease < today) {
+    return invalid('La fecha de liberación debe ser igual o mayor a la fecha actual');
+  }
+  return valid();
+}
+
+function validateDateRevision(dateRevision: string, dateRelease: string): FieldValidation {
+  if (!dateRevision) return invalid('La fecha de revisión es requerida');
+  if (!dateRelease) return valid();
+  const expected = new Date(dateRelease);
+  expected.setFullYear(expected.getFullYear() + 1);
+  const expectedStr = expected.toISOString().split('T')[0] as string;
+  if (dateRevision !== expectedStr) {
+    return invalid('La fecha de revisión debe ser exactamente un año después de la liberación');
+  }
+  return valid();
+}
+
+async function validateIdUniqueness(
+  id: string,
+  repository: IProductRepository,
+): Promise<FieldValidation> {
+  try {
+    const exists = await repository.verifyId(id);
+    return exists ? invalid('Este ID ya está registrado') : valid();
+  } catch {
+    return invalid('No se pudo verificar el ID');
+  }
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const INITIAL_VALIDATION: FormValidationState = {
-  id: VALID,
-  name: VALID,
-  description: VALID,
-  logo: VALID,
-  date_release: VALID,
-  date_revision: VALID,
+  id: valid(),
+  name: valid(),
+  description: valid(),
+  logo: valid(),
+  date_release: valid(),
+  date_revision: valid(),
 };
 
-/** Returns a date string one year after the given ISO date string. */
+const EMPTY_FORM: ProductFormData = {
+  id: '',
+  name: '',
+  description: '',
+  logo: '',
+  date_release: '',
+  date_revision: '',
+};
+
 const addOneYear = (dateStr: string): string => {
   const date = new Date(dateStr);
   date.setFullYear(date.getFullYear() + 1);
   return date.toISOString().split('T')[0] as string;
 };
 
-const validate = async (
-  data: ProductFormData,
-  isEditing: boolean,
-): Promise<FormValidationState> => {
-  const state: FormValidationState = { ...INITIAL_VALIDATION };
-
-  if (!data.id || data.id.length < 3 || data.id.length > 10) {
-    state.id = invalid('El ID debe tener entre 3 y 10 caracteres');
-  } else if (!isEditing) {
-    const exists = await repository.verifyId(data.id);
-    if (exists) {
-      state.id = invalid('El ID ya existe');
-    }
-  }
-
-  if (!data.name || data.name.length < 5 || data.name.length > 100) {
-    state.name = invalid('El nombre debe tener entre 5 y 100 caracteres');
-  }
-
-  if (!data.description || data.description.length < 10 || data.description.length > 200) {
-    state.description = invalid('La descripción debe tener entre 10 y 200 caracteres');
-  }
-
-  if (!data.logo) {
-    state.logo = invalid('El logo es requerido');
-  }
-
-  if (data.date_release) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const releaseDate = new Date(data.date_release);
-    if (releaseDate < today) {
-      state.date_release = invalid('La fecha de liberación debe ser igual o mayor a hoy');
-    }
-  } else {
-    state.date_release = invalid('La fecha de liberación es requerida');
-  }
-
-  return state;
-};
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * Manages product form state, field-level validation, and create/update submission.
+ * Hook de aplicación para el formulario de productos financieros.
+ * Maneja estado de campos, validaciones síncronas y asíncronas,
+ * y las operaciones de creación y edición.
  *
- * Business rules encapsulated here:
- * - date_revision se auto-computa como date_release + 1 año al cambiar el campo.
- * - La unicidad del ID se valida contra el repositorio solo al crear.
- * - Los errores de validación se limpian por campo al escribir.
- *
- * @param initialData - Producto existente cuando se edita una entrada.
- * @param onSuccess   - Callback invocado tras un crear o actualizar exitoso.
+ * @param repository - Repositorio inyectado para verificación de ID
+ * @param initialProduct - Si se provee, el formulario inicia en modo edición
  */
 export const useProductForm = (
-  initialData?: Product,
-  onSuccess?: () => void,
+  repository: IProductRepository = productRepository,
+  initialProduct?: Product,
 ) => {
-  const isEditing = Boolean(initialData);
+  const isEditMode = Boolean(initialProduct);
 
-  const [formData, setFormData] = useState<ProductFormData>({
-    id: initialData?.id ?? '',
-    name: initialData?.name ?? '',
-    description: initialData?.description ?? '',
-    logo: initialData?.logo ?? '',
-    date_release: initialData?.date_release ?? '',
-    date_revision: initialData?.date_revision ?? '',
-  });
-
-  const [validation, setValidation] = useState<FormValidationState>(INITIAL_VALIDATION);
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<ProductFormData>(
+    initialProduct ?? EMPTY_FORM,
+  );
+  const [validationState, setValidationState] = useState<FormValidationState>(
+    INITIAL_VALIDATION,
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  /**
+   * Actualiza un campo, ejecuta validación síncrona inmediata y —si el campo
+   * es id con longitud válida en modo creación— dispara verificación asíncrona.
+   * Al cambiar date_release, auto-computa date_revision y revalida ambos.
+   */
   const updateField = useCallback(
-    <K extends keyof ProductFormData>(field: K, value: ProductFormData[K]) => {
-      setFormData((prev) => {
-        const next = { ...prev, [field]: value };
-        // Auto-compute date_revision whenever date_release is set
-        if (field === 'date_release' && typeof value === 'string' && value) {
-          next.date_revision = addOneYear(value);
-        }
-        return next;
-      });
-      setValidation((prev) => ({ ...prev, [field]: VALID }));
+    (field: keyof ProductFormData, value: string) => {
+      let next = { ...formData, [field]: value };
+      if (field === 'date_release' && value) {
+        next = { ...next, date_revision: addOneYear(value) };
+      }
+      setFormData(next);
+
+      const updates: Partial<FormValidationState> = {};
+      switch (field) {
+        case 'id':          updates.id = validateId(value); break;
+        case 'name':        updates.name = validateName(value); break;
+        case 'description': updates.description = validateDescription(value); break;
+        case 'logo':        updates.logo = validateLogo(value); break;
+        case 'date_release':
+          updates.date_release = validateDateRelease(value);
+          updates.date_revision = validateDateRevision(next.date_revision, value);
+          break;
+        case 'date_revision':
+          updates.date_revision = validateDateRevision(value, next.date_release);
+          break;
+      }
+      setValidationState((prev) => ({ ...prev, ...updates }));
+
+      if (field === 'id' && !isEditMode && value.length >= 3 && value.length <= 10) {
+        validateIdUniqueness(value, repository).then((result) => {
+          setValidationState((prev) => ({ ...prev, id: result }));
+        });
+      }
     },
-    [],
+    [formData, isEditMode, repository],
   );
 
-  const reset = useCallback(() => {
-    setFormData({
-      id: '',
-      name: '',
-      description: '',
-      logo: '',
-      date_release: '',
-      date_revision: '',
-    });
-    setValidation(INITIAL_VALIDATION);
-    setSubmitError(null);
-  }, []);
+  /**
+   * Ejecuta todas las validaciones síncronas y, en modo creación, la verificación
+   * asíncrona de unicidad de ID.
+   * @returns true solo si todos los campos son válidos.
+   */
+  const validateAllFields = useCallback(async (): Promise<boolean> => {
+    const state: FormValidationState = {
+      id: validateId(formData.id),
+      name: validateName(formData.name),
+      description: validateDescription(formData.description),
+      logo: validateLogo(formData.logo),
+      date_release: validateDateRelease(formData.date_release),
+      date_revision: validateDateRevision(formData.date_revision, formData.date_release),
+    };
 
-  const submit = useCallback(async () => {
-    const result = await validate(formData, isEditing);
-    const hasErrors = Object.values(result).some((f) => !f.isValid);
-    if (hasErrors) {
-      setValidation(result);
-      return;
+    if (!isEditMode && state.id.isValid) {
+      state.id = await validateIdUniqueness(formData.id, repository);
     }
 
-    setLoading(true);
-    setSubmitError(null);
-    try {
-      if (isEditing && initialData) {
-        await repository.update(initialData.id, {
-          name: formData.name,
-          description: formData.description,
-          logo: formData.logo,
-          date_release: formData.date_release,
-          date_revision: formData.date_revision,
-        });
-      } else {
-        await repository.create(formData);
+    setValidationState(state);
+    return Object.values(state).every((f) => f.isValid);
+  }, [formData, isEditMode, repository]);
+
+  /**
+   * Valida todo el formulario y, si es válido, llama a create o update según el modo.
+   * @param onSuccess - Callback invocado con el producto persistido tras el éxito.
+   */
+  const submitForm = useCallback(
+    async (onSuccess: (product: Product) => void): Promise<void> => {
+      const isValid = await validateAllFields();
+      if (!isValid) return;
+
+      setIsSubmitting(true);
+      setSubmitError(null);
+      try {
+        let product: Product;
+        if (isEditMode && initialProduct) {
+          product = await repository.update(initialProduct.id, {
+            name: formData.name,
+            description: formData.description,
+            logo: formData.logo,
+            date_release: formData.date_release,
+            date_revision: formData.date_revision,
+          });
+        } else {
+          product = await repository.create(formData);
+        }
+        onSuccess(product);
+      } catch (err) {
+        setSubmitError(
+          err instanceof Error ? err.message : 'Error al guardar el producto',
+        );
+      } finally {
+        setIsSubmitting(false);
       }
-      onSuccess?.();
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Error al guardar producto');
-    } finally {
-      setLoading(false);
-    }
-  }, [formData, isEditing, initialData, onSuccess]);
+    },
+    [validateAllFields, isEditMode, initialProduct, formData, repository],
+  );
+
+  /** Restaura el formulario al estado inicial (vacío en creación, producto original en edición). */
+  const resetForm = useCallback(() => {
+    setFormData(initialProduct ?? EMPTY_FORM);
+    setValidationState(INITIAL_VALIDATION);
+    setSubmitError(null);
+  }, [initialProduct]);
 
   return {
     formData,
-    validation,
-    loading,
+    validationState,
+    isSubmitting,
     submitError,
+    isEditMode,
     updateField,
-    reset,
-    submit,
-    isEditing,
+    submitForm,
+    resetForm,
   };
 };

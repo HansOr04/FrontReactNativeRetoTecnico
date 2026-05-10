@@ -19,10 +19,10 @@ jest.mock('react-native-gesture-handler', () => ({
 }));
 
 jest.mock('../src/infrastructure/api/ProductApiRepository', () => ({
-  ProductApiRepository: jest.fn().mockImplementation(() => ({
+  productRepository: {
     getAll: jest.fn().mockResolvedValue([]),
     delete: jest.fn().mockResolvedValue(undefined),
-  })),
+  },
 }));
 
 import React from 'react';

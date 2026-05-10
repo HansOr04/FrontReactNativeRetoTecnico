@@ -1,66 +1,92 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Product } from '../../domain/model/Product';
 import type { IProductRepository } from '../../domain/repository/IProductRepository';
-import { ProductApiRepository } from '../../infrastructure/api/ProductApiRepository';
+import { productRepository } from '../../infrastructure/api/ProductApiRepository';
 
-const repository: IProductRepository = new ProductApiRepository();
+const ERROR_LOAD = 'No se pudieron cargar los productos. Intente de nuevo.';
+const ERROR_DELETE = 'No se pudo eliminar el producto. Intente de nuevo.';
 
 /**
- * Manages the product list, search filtering, refresh, and deletion.
+ * Hook de aplicación para la gestión de la lista de productos financieros.
  *
- * Business rules encapsulated here:
- * - Search matches against both name and description (case-insensitive).
- * - totalCount always reflects the unfiltered list length.
- * - Optimistic deletion removes the item from local state immediately.
+ * Responsabilidades:
+ * - Cargar productos desde el repositorio al montar
+ * - Filtrar productos por búsqueda de texto (nombre o id)
+ * - Exponer la cantidad de registros visibles
+ * - Gestionar el estado de carga y error para feedback visual
+ * - Proveer la función de eliminación con manejo de errores
  *
- * @returns Products list, loading/error state, search controls, and action handlers.
+ * @param repository - Repositorio de productos (inyectado para testabilidad)
  */
-export const useProducts = () => {
+export const useProducts = (
+  repository: IProductRepository = productRepository,
+) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await repository.getAll();
-      setProducts(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar productos');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
 
   const filteredProducts = useMemo(
     () =>
       products.filter(
         (p) =>
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase()),
+          p.id.toLowerCase().includes(searchQuery.toLowerCase()),
       ),
     [products, searchQuery],
   );
 
-  const deleteProduct = useCallback(async (id: string) => {
-    await repository.delete(id);
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  const recordCount = filteredProducts.length;
+
+  /** Carga todos los productos desde el repositorio y actualiza el estado. */
+  const loadProducts = useCallback(async (): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await repository.getAll();
+      setProducts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ERROR_LOAD);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [repository]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  /**
+   * Elimina un producto por ID y recarga la lista.
+   * @returns true si la eliminación fue exitosa, false si hubo un error.
+   */
+  const deleteProduct = useCallback(
+    async (id: string): Promise<boolean> => {
+      setIsDeleting(true);
+      try {
+        await repository.delete(id);
+        await loadProducts();
+        return true;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : ERROR_DELETE);
+        return false;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [repository, loadProducts],
+  );
 
   return {
-    products: filteredProducts,
-    totalCount: products.length,
+    filteredProducts,
+    recordCount,
     searchQuery,
-    setSearchQuery,
-    loading,
+    isLoading,
+    isDeleting,
     error,
-    refresh: fetchProducts,
+    setSearchQuery,
     deleteProduct,
+    loadProducts,
   };
 };

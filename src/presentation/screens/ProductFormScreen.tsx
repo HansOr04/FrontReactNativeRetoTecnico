@@ -10,25 +10,37 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { useProductForm } from '../../application/hooks/useProductForm';
+import { productRepository } from '../../infrastructure/api/ProductApiRepository';
 import type { FieldValidation } from '../../domain/model/Product';
 import { FormField } from '../components/FormField';
 import { Colors } from '../../constants/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductForm'>;
 
-/** Extracts the error message string from a FieldValidation or undefined if valid. */
+/** Extrae el mensaje de error de un FieldValidation, o undefined si es válido. */
 const fieldError = (v: FieldValidation): string | undefined =>
   v.isValid ? undefined : v.errorMessage ?? undefined;
 
 /**
- * Form screen for creating a new product or editing an existing one.
- * All validation and submission logic lives in useProductForm.
+ * Pantalla de formulario para crear o editar un producto financiero.
+ * Toda la lógica de validación y envío vive en useProductForm.
  */
 export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
   const existingProduct = route.params?.product;
 
-  const { formData, validation, loading, submitError, updateField, reset, submit, isEditing } =
-    useProductForm(existingProduct, () => navigation.popToTop());
+  const {
+    formData,
+    validationState,
+    isSubmitting,
+    submitError,
+    isEditMode,
+    updateField,
+    submitForm,
+    resetForm,
+  } = useProductForm(productRepository, existingProduct);
+
+  const handleSubmit = () =>
+    submitForm((_product) => navigation.popToTop());
 
   return (
     <ScrollView
@@ -40,8 +52,8 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         label="ID"
         value={formData.id}
         onChangeText={(v) => updateField('id', v)}
-        error={fieldError(validation.id)}
-        editable={!isEditing}
+        error={fieldError(validationState.id)}
+        editable={!isEditMode}
         placeholder="ej: tdc-001"
         autoCapitalize="none"
       />
@@ -49,14 +61,14 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         label="Nombre"
         value={formData.name}
         onChangeText={(v) => updateField('name', v)}
-        error={fieldError(validation.name)}
+        error={fieldError(validationState.name)}
         placeholder="ej: Tarjeta de Crédito"
       />
       <FormField
         label="Descripción"
         value={formData.description}
         onChangeText={(v) => updateField('description', v)}
-        error={fieldError(validation.description)}
+        error={fieldError(validationState.description)}
         placeholder="ej: Tarjeta de crédito con beneficios exclusivos"
         multiline
         numberOfLines={3}
@@ -65,7 +77,7 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         label="Logo (URL)"
         value={formData.logo}
         onChangeText={(v) => updateField('logo', v)}
-        error={fieldError(validation.logo)}
+        error={fieldError(validationState.logo)}
         placeholder="https://example.com/logo.png"
         autoCapitalize="none"
         keyboardType="url"
@@ -74,7 +86,7 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         label="Fecha de Liberación"
         value={formData.date_release}
         onChangeText={(v) => updateField('date_release', v)}
-        error={fieldError(validation.date_release)}
+        error={fieldError(validationState.date_release)}
         placeholder="YYYY-MM-DD"
       />
       <FormField
@@ -91,22 +103,22 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
 
       <TouchableOpacity
         style={styles.submitButton}
-        onPress={submit}
-        disabled={loading}
+        onPress={handleSubmit}
+        disabled={isSubmitting}
       >
-        {loading ? (
+        {isSubmitting ? (
           <ActivityIndicator color={Colors.textPrimary} />
         ) : (
           <Text style={styles.submitText}>
-            {isEditing ? 'Actualizar' : 'Agregar'}
+            {isEditMode ? 'Actualizar' : 'Agregar'}
           </Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.resetButton}
-        onPress={reset}
-        disabled={loading}
+        onPress={resetForm}
+        disabled={isSubmitting}
       >
         <Text style={styles.resetText}>Reiniciar</Text>
       </TouchableOpacity>

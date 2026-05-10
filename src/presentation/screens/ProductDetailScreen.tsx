@@ -35,10 +35,10 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await deleteProduct(product.id);
+            const success = await deleteProduct(product.id);
+            if (success) {
               navigation.goBack();
-            } catch {
+            } else {
               Alert.alert('Error', 'No se pudo eliminar el producto');
             }
           },

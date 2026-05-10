@@ -3,29 +3,57 @@ import type { IProductRepository } from '../../domain/repository/IProductReposit
 import type { Product, ProductFormData } from '../../domain/model/Product';
 
 /**
- * HTTP implementation of IProductRepository.
- * Communicates with the backend REST API at /bp/products.
- * Swap this class for any other implementation without touching
- * the application or presentation layers (DIP).
+ * Implementación HTTP del repositorio de productos financieros.
+ * Consume la API del backend Node.js corriendo en localhost:3002.
+ *
+ * Implementa IProductRepository — la capa de aplicación solo
+ * conoce la interfaz, no esta implementación concreta (DIP).
  */
 export class ProductApiRepository implements IProductRepository {
+  /**
+   * Obtiene todos los productos. El backend retorna { data: Product[] }.
+   */
   async getAll(): Promise<Product[]> {
-    return apiClient.get<Product[]>('/products');
+    const response = await apiClient.get<{ data: Product[] }>('/products');
+    return response.data;
   }
 
+  /**
+   * Crea un producto. El backend retorna { message: string, data: Product }.
+   */
   async create(product: ProductFormData): Promise<Product> {
-    return apiClient.post<Product>('/products', product);
+    const response = await apiClient.post<{ message: string; data: Product }>(
+      '/products',
+      product,
+    );
+    return response.data;
   }
 
+  /**
+   * Actualiza un producto. El ID no se envía en el body — va en la URL.
+   */
   async update(id: string, product: Omit<ProductFormData, 'id'>): Promise<Product> {
-    return apiClient.put<Product>(`/products/${id}`, product);
+    const response = await apiClient.put<{ message: string; data: Product }>(
+      `/products/${id}`,
+      product,
+    );
+    return response.data;
   }
 
+  /**
+   * Elimina un producto. El backend retorna { message: string }.
+   */
   async delete(id: string): Promise<void> {
-    return apiClient.delete(`/products/${id}`);
+    await apiClient.delete<{ message: string }>(`/products/${id}`);
   }
 
+  /**
+   * Verifica si un ID existe. El backend retorna true o false directamente.
+   */
   async verifyId(id: string): Promise<boolean> {
-    return apiClient.get<boolean>(`/products/verification?id=${id}`);
+    return apiClient.get<boolean>(`/products/verification/${id}`);
   }
 }
+
+/** Instancia singleton — compartida por todos los hooks de la aplicación. */
+export const productRepository = new ProductApiRepository();

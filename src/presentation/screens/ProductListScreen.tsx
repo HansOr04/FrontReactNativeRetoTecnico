@@ -23,13 +23,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ProductList'>;
  */
 export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
   const {
-    products,
-    totalCount,
+    filteredProducts,
+    recordCount,
     searchQuery,
     setSearchQuery,
-    loading,
+    isLoading,
     error,
-    refresh,
+    loadProducts,
   } = useProducts();
 
   const handlePress = (product: Product) =>
@@ -37,7 +37,7 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleAdd = () => navigation.navigate('ProductForm', {});
 
-  if (loading && products.length === 0) {
+  if (isLoading && filteredProducts.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -49,7 +49,7 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={refresh}>
+        <TouchableOpacity style={styles.retryButton} onPress={loadProducts}>
           <Text style={styles.retryText}>Reintentar</Text>
         </TouchableOpacity>
       </View>
@@ -64,20 +64,20 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
         placeholder="Buscar por nombre o descripción..."
       />
       <View style={styles.countRow}>
-        <Text style={styles.countText}>{totalCount} productos</Text>
+        <Text style={styles.countText}>{recordCount} productos</Text>
         <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
           <Text style={styles.addButtonText}>+ Agregar</Text>
         </TouchableOpacity>
       </View>
       <FlatList
-        data={products}
+        data={filteredProducts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ProductItem product={item} onPress={handlePress} />
         )}
         contentContainerStyle={styles.list}
-        onRefresh={refresh}
-        refreshing={loading}
+        onRefresh={loadProducts}
+        refreshing={isLoading}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No se encontraron productos</Text>
         }
