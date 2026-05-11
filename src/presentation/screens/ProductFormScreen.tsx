@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,19 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ProductForm'>;
  * Funcionalidades implementadas: F4 (crear), F5 (editar)
  * Diseño basado en D2 (formulario) y D3 (lista con botón Agregar)
  */
+const formatIdInput = (text: string): string => {
+  const clean = text.toLowerCase().replaceAll(/[^a-z0-9]/g, '').slice(0, 9);
+  if (clean.length <= 3) return clean;
+  return `${clean.slice(0, 3)}-${clean.slice(3)}`;
+};
+
+const formatDateInput = (text: string): string => {
+  const digits = text.replaceAll(/\D/g, '').slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+};
+
 export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
   const { product } = route.params ?? {};
   const isEditMode = product !== undefined;
@@ -40,12 +53,18 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
     });
   }, [navigation, isEditMode]);
 
+  useEffect(() => {
+    if (hook.submitError) {
+      Alert.alert('No se pudo guardar', hook.submitError, [{ text: 'Entendido' }]);
+    }
+  }, [hook.submitError]);
+
   const handleSubmit = () => {
     void hook.submitForm((_saved) => {
-      navigation.navigate('ProductList');
       Alert.alert(
         'Éxito',
         `Producto ${isEditMode ? 'actualizado' : 'creado'} correctamente`,
+        [{ text: 'OK', onPress: () => navigation.navigate('ProductList') }],
       );
     });
   };
@@ -97,10 +116,13 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         <FormField
           label="ID"
           value={hook.formData.id}
-          onChangeText={(text) => hook.updateField('id', text)}
+          onChangeText={(text) => hook.updateField('id', formatIdInput(text))}
           errorMessage={hook.validationState.id.errorMessage}
           isDisabled={isEditMode}
           placeholder="ej: tdc-001"
+          autoCapitalize="none"
+          autoCorrect={false}
+          hint="Formato: 3 letras, guión y hasta 6 caracteres (ej: trj-crd)"
         />
 
         <FormField
@@ -139,10 +161,11 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
         <FormField
           label="Fecha Liberación"
           value={hook.formData.date_release}
-          onChangeText={(text) => hook.updateField('date_release', text)}
+          onChangeText={(text) => hook.updateField('date_release', formatDateInput(text))}
           errorMessage={hook.validationState.date_release.errorMessage}
-          placeholder="YYYY-MM-DD"
+          placeholder="YYYYMMDD"
           keyboardType="numeric"
+          hint="Escribe los números y el formato se aplica solo"
         />
 
         <FormField
@@ -152,10 +175,6 @@ export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
           isDisabled
           placeholder="Se calcula automáticamente"
         />
-
-        {hook.submitError ? (
-          <Text style={styles.submitError}>{hook.submitError}</Text>
-        ) : null}
 
         {renderButtons()}
 

@@ -82,8 +82,10 @@ export const ProductListScreen: React.FC<Props> = ({ navigation }) => {
   if (error) {
     return (
       <SafeAreaView style={styles.centered}>
+        <Text style={styles.errorIcon}>{'⚠️'}</Text>
+        <Text style={styles.errorTitle}>Algo salió mal</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadProducts}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { void loadProducts(); }}>
           <Text style={styles.retryText}>Reintentar</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -171,11 +173,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.textPrimary,
   },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
   errorText: {
-    fontSize: 16,
-    color: Colors.textError,
+    fontSize: 14,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
+    lineHeight: 20,
+    paddingHorizontal: 16,
   },
   retryButton: {
     backgroundColor: Colors.primary,

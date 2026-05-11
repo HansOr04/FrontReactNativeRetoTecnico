@@ -15,8 +15,9 @@ const invalid = (errorMessage: string): FieldValidation => ({ isValid: false, er
 
 function validateId(id: string): FieldValidation {
   if (!id) return invalid('El ID es requerido');
-  if (id.length < 3) return invalid('El ID debe tener mínimo 3 caracteres');
-  if (id.length > 10) return invalid('El ID debe tener máximo 10 caracteres');
+  if (!/^[a-z]{3}-[a-z0-9]{1,6}$/.test(id)) {
+    return invalid('Formato requerido: 3 letras, guión y hasta 6 caracteres (ej: trj-crd)');
+  }
   return valid();
 }
 
@@ -39,11 +40,25 @@ function validateLogo(logo: string): FieldValidation {
   return valid();
 }
 
+function isValidCalendarDate(dateStr: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return false;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const date = new Date(dateStr);
+  return !Number.isNaN(date.getTime()) && date.getUTCMonth() + 1 === m && date.getUTCDate() === d;
+}
+
 function validateDateRelease(dateRelease: string): FieldValidation {
   if (!dateRelease) return invalid('La fecha de liberación es requerida');
-  const today = new Date().toISOString().split('T')[0] as string;
+  if (!isValidCalendarDate(dateRelease)) return invalid('Ingresa una fecha válida en formato YYYY-MM-DD');
+  const today = new Date().toISOString().split('T')[0];
   if (dateRelease < today) {
     return invalid('La fecha de liberación debe ser igual o mayor a la fecha actual');
+  }
+  const maxYear = new Date().getFullYear() + 10;
+  if (Number.parseInt(dateRelease.slice(0, 4), 10) > maxYear) {
+    return invalid(`El año no puede ser mayor a ${maxYear}`);
   }
   return valid();
 }
@@ -51,9 +66,7 @@ function validateDateRelease(dateRelease: string): FieldValidation {
 function validateDateRevision(dateRevision: string, dateRelease: string): FieldValidation {
   if (!dateRevision) return invalid('La fecha de revisión es requerida');
   if (!dateRelease) return valid();
-  const expected = new Date(dateRelease);
-  expected.setFullYear(expected.getFullYear() + 1);
-  const expectedStr = expected.toISOString().split('T')[0] as string;
+  const expectedStr = addOneYear(dateRelease);
   if (dateRevision !== expectedStr) {
     return invalid('La fecha de revisión debe ser exactamente un año después de la liberación');
   }
@@ -93,9 +106,11 @@ const EMPTY_FORM: ProductFormData = {
 };
 
 const addOneYear = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  date.setFullYear(date.getFullYear() + 1);
-  return date.toISOString().split('T')[0] as string;
+  const parts = dateStr.split('-');
+  if (parts.length !== 3 || parts[0]?.length !== 4) return '';
+  const year = Number.parseInt(parts[0], 10);
+  if (Number.isNaN(year)) return '';
+  return `${year + 1}-${parts[1]}-${parts[2]}`;
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -185,7 +200,7 @@ export const useProductForm = (
   }, [formData, isEditMode, repository]);
 
   /**
-   * Valida todo el formulario y, si es válido, llama a create o update según el modo.
+   * Valida cada campo y, si son válidos, llama a create o update según el modo.
    * @param onSuccess - Callback invocado con el producto persistido tras el éxito.
    */
   const submitForm = useCallback(

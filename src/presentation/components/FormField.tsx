@@ -9,19 +9,17 @@ import {
 import { Colors } from '../../constants/colors';
 
 interface Props {
-  /** Etiqueta visible encima del campo. */
   label: string;
-  /** Valor actual del campo. */
   value: string;
-  /** Callback de cambio de texto. Omitir en campos de solo lectura. */
   onChangeText?: (text: string) => void;
-  /** Mensaje de error; cuando no es null/undefined/'' muestra texto rojo debajo del input. */
   errorMessage?: string | null;
-  /** Cuando true, el campo no es editable (ej: ID en modo edición). */
   isDisabled?: boolean;
   placeholder?: string;
   keyboardType?: KeyboardTypeOptions;
   multiline?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
+  hint?: string;
 }
 
 /**
@@ -42,6 +40,9 @@ export const FormField: React.FC<Props> = ({
   placeholder,
   keyboardType,
   multiline,
+  autoCapitalize,
+  autoCorrect,
+  hint,
 }) => {
   const inputStyle = useMemo(
     () => [
@@ -64,9 +65,14 @@ export const FormField: React.FC<Props> = ({
         placeholderTextColor={Colors.textMuted}
         keyboardType={keyboardType}
         multiline={multiline}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
       />
       {errorMessage ? (
         <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
+      {!errorMessage && hint ? (
+        <Text style={styles.hintText}>{hint}</Text>
       ) : null}
     </View>
   );
@@ -101,6 +107,11 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: Colors.textError,
+    marginTop: 4,
+  },
+  hintText: {
+    fontSize: 12,
+    color: Colors.textMuted,
     marginTop: 4,
   },
 });
