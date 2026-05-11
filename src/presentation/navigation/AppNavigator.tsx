@@ -71,7 +71,7 @@ export const AppNavigator: React.FC = () => (
         name="ProductForm"
         component={ProductFormScreen}
         options={({ route }) => ({
-          title: route.params?.product ? 'Editar' : 'Agregar',
+          title: route.params?.product ? 'Editar' : 'Formulario de Registro',
         })}
       />
     </Stack.Navigator>

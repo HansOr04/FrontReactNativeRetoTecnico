@@ -1,137 +1,205 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import {
   View,
-  ScrollView,
-  TouchableOpacity,
   Text,
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  TouchableOpacity,
   ActivityIndicator,
+  Alert,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { useProductForm } from '../../application/hooks/useProductForm';
 import { productRepository } from '../../infrastructure/api/ProductApiRepository';
-import type { FieldValidation } from '../../domain/model/Product';
 import { FormField } from '../components/FormField';
 import { Colors } from '../../constants/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductForm'>;
 
-/** Extrae el mensaje de error de un FieldValidation, o null si es válido. */
-const fieldError = (v: FieldValidation): string | null =>
-  v.isValid ? null : v.errorMessage;
-
 /**
- * Pantalla de formulario para crear o editar un producto financiero.
- * Toda la lógica de validación y envío vive en useProductForm.
+ * Formulario de registro y edición de productos financieros.
+ * En modo creación: todos los campos editables, ID verificado contra la API.
+ * En modo edición: ID deshabilitado, resto de campos editables.
+ *
+ * Funcionalidades implementadas: F4 (crear), F5 (editar)
+ * Diseño basado en D2 (formulario) y D3 (lista con botón Agregar)
  */
 export const ProductFormScreen: React.FC<Props> = ({ route, navigation }) => {
-  const existingProduct = route.params?.product;
+  const { product } = route.params ?? {};
+  const isEditMode = product !== undefined;
 
-  const {
-    formData,
-    validationState,
-    isSubmitting,
-    submitError,
-    isEditMode,
-    updateField,
-    submitForm,
-    resetForm,
-  } = useProductForm(productRepository, existingProduct);
+  const hook = useProductForm(productRepository, product);
 
-  const handleSubmit = () =>
-    submitForm((_product) => navigation.popToTop());
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: isEditMode ? 'Editar' : 'Formulario de Registro',
+    });
+  }, [navigation, isEditMode]);
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <FormField
-        label="ID"
-        value={formData.id}
-        onChangeText={(v) => updateField('id', v)}
-        errorMessage={fieldError(validationState.id)}
-        isDisabled={isEditMode}
-        placeholder="ej: tdc-001"
-      />
-      <FormField
-        label="Nombre"
-        value={formData.name}
-        onChangeText={(v) => updateField('name', v)}
-        errorMessage={fieldError(validationState.name)}
-        placeholder="ej: Tarjeta de Crédito"
-      />
-      <FormField
-        label="Descripción"
-        value={formData.description}
-        onChangeText={(v) => updateField('description', v)}
-        errorMessage={fieldError(validationState.description)}
-        placeholder="ej: Tarjeta de crédito con beneficios exclusivos"
-        multiline
-      />
-      <FormField
-        label="Logo (URL)"
-        value={formData.logo}
-        onChangeText={(v) => updateField('logo', v)}
-        errorMessage={fieldError(validationState.logo)}
-        placeholder="https://example.com/logo.png"
-        keyboardType="url"
-      />
-      <FormField
-        label="Fecha de Liberación"
-        value={formData.date_release}
-        onChangeText={(v) => updateField('date_release', v)}
-        errorMessage={fieldError(validationState.date_release)}
-        placeholder="YYYY-MM-DD"
-      />
-      <FormField
-        label="Fecha de Revisión (auto-calculada)"
-        value={formData.date_revision}
-        isDisabled
-        placeholder="Se calcula automáticamente"
-      />
+  const handleSubmit = () => {
+    void hook.submitForm((_saved) => {
+      navigation.navigate('ProductList');
+      Alert.alert(
+        'Éxito',
+        `Producto ${isEditMode ? 'actualizado' : 'creado'} correctamente`,
+      );
+    });
+  };
 
-      {submitError ? (
-        <Text style={styles.submitError}>{submitError}</Text>
-      ) : null}
-
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleSubmit}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color={Colors.textPrimary} />
-        ) : (
-          <Text style={styles.submitText}>
-            {isEditMode ? 'Actualizar' : 'Agregar'}
+  // ── Private render: action buttons ────────────────────────────────────────
+  // Extracted because the conditional (spinner vs two buttons) exceeds 20 lines.
+  const renderButtons = () => {
+    if (hook.isSubmitting) {
+      return (
+        <ActivityIndicator
+          size="large"
+          color={Colors.primary}
+          style={styles.spinner}
+        />
+      );
+    }
+    return (
+      <>
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>
+            {isEditMode ? 'Actualizar' : 'Enviar'}
           </Text>
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={hook.resetForm}
+        >
+          <Text style={styles.resetButtonText}>Reiniciar</Text>
+        </TouchableOpacity>
+      </>
+    );
+  };
 
-      <TouchableOpacity
-        style={styles.resetButton}
-        onPress={resetForm}
-        disabled={isSubmitting}
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.resetText}>Reiniciar</Text>
-      </TouchableOpacity>
+        {!isEditMode && (
+          <Text style={styles.title}>Formulario de Registro</Text>
+        )}
 
-      <View style={styles.spacer} />
-    </ScrollView>
+        <FormField
+          label="ID"
+          value={hook.formData.id}
+          onChangeText={(text) => hook.updateField('id', text)}
+          errorMessage={hook.validationState.id.errorMessage}
+          isDisabled={isEditMode}
+          placeholder="ej: tdc-001"
+        />
+
+        <FormField
+          label="Nombre"
+          value={hook.formData.name}
+          onChangeText={(text) => hook.updateField('name', text)}
+          errorMessage={hook.validationState.name.errorMessage}
+          placeholder="ej: Tarjeta de Crédito"
+        />
+
+        <FormField
+          label="Descripción"
+          value={hook.formData.description}
+          onChangeText={(text) => hook.updateField('description', text)}
+          errorMessage={hook.validationState.description.errorMessage}
+          placeholder="ej: Tarjeta de crédito con beneficios exclusivos"
+          multiline
+        />
+
+        <FormField
+          label="Logo"
+          value={hook.formData.logo}
+          onChangeText={(text) => hook.updateField('logo', text)}
+          errorMessage={hook.validationState.logo.errorMessage}
+          placeholder="https://..."
+          keyboardType="url"
+        />
+        {hook.formData.logo ? (
+          <Image
+            source={{ uri: hook.formData.logo }}
+            style={styles.logoPreview}
+            resizeMode="contain"
+          />
+        ) : null}
+
+        <FormField
+          label="Fecha Liberación"
+          value={hook.formData.date_release}
+          onChangeText={(text) => hook.updateField('date_release', text)}
+          errorMessage={hook.validationState.date_release.errorMessage}
+          placeholder="YYYY-MM-DD"
+          keyboardType="numeric"
+        />
+
+        <FormField
+          label="Fecha Revisión (auto-calculada)"
+          value={hook.formData.date_revision}
+          errorMessage={hook.validationState.date_revision.errorMessage}
+          isDisabled
+          placeholder="Se calcula automáticamente"
+        />
+
+        {hook.submitError ? (
+          <Text style={styles.submitError}>{hook.submitError}</Text>
+        ) : null}
+
+        {renderButtons()}
+
+        <View style={styles.spacer} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.backgroundSecondary },
-  content: { padding: 16 },
+  flex: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundSecondary,
+  },
+  content: {
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 24,
+  },
+  logoPreview: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    backgroundColor: Colors.backgroundPrimary,
+    marginTop: -8,
+    marginBottom: 16,
+  },
   submitError: {
     color: Colors.textError,
     fontSize: 14,
-    marginBottom: 12,
     textAlign: 'center',
+    margin: 8,
+  },
+  spinner: {
+    marginVertical: 16,
   },
   submitButton: {
     backgroundColor: Colors.primary,
@@ -140,7 +208,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  submitText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
   resetButton: {
     backgroundColor: Colors.buttonSecondaryBackground,
     borderRadius: 8,
@@ -149,6 +221,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderDefault,
   },
-  resetText: { fontSize: 16, fontWeight: '600', color: Colors.buttonSecondaryText },
-  spacer: { height: 40 },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.buttonSecondaryText,
+  },
+  spacer: {
+    height: 40,
+  },
 });
